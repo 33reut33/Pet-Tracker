@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pet Tracker — פעילות</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+    <!-- מודל התראת חוסר תנועה -->
+    <div id="inactivity-modal" class="modal-overlay">
+        <div class="modal-content" style="border-top-color:#f4a261;">
+            <div class="modal-header" style="color:#c97a2e;">
+                <i id="inact-modal-icon" class="fas fa-bed pulse-icon" style="color:#f4a261;"></i>
+                <h3 id="inact-modal-title">חוסר תנועה!</h3>
+            </div>
+            <p id="inact-modal-text">החיה לא זזה כבר זמן רב!</p>
+            <button class="close-modal-btn" onclick="closeInactivityModal()"
+                    style="background:#f4a261;">הבנתי, סגור התראה</button>
+        </div>
+    </div>
+
+    <div id="sidebar-root"></div>
+
+    <main class="content-area">
+
+        <!-- Card 1: Status + Today stats + Alert config -->
+        <div class="glass-card">
+            <h2 class="page-heading"><i class="fas fa-running"></i> ניטור פעילות ותנועה</h2>
+
+            <div class="activity-status-row">
+                <div id="live-badge" class="live-badge resting">
+                    <i class="fas fa-moon"></i> טוען...
+                </div>
+                <div class="today-stats-grid">
+                    <div class="stat-box">
+                        <i class="fas fa-route"></i>
+                        <span class="stat-value" id="stat-distance">—</span>
+                        <span class="stat-label">מרחק היום</span>
+                    </div>
+                    <div class="stat-box">
+                        <i class="fas fa-running" style="color:#2a9d8f;"></i>
+                        <span class="stat-value" id="stat-active">—</span>
+                        <span class="stat-label">זמן פעיל</span>
+                    </div>
+                    <div class="stat-box">
+                        <i class="fas fa-moon" style="color:#f4a261;"></i>
+                        <span class="stat-value" id="stat-inactive">—</span>
+                        <span class="stat-label">זמן מנוחה</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert-config-bar">
+                <i class="fas fa-bell" style="color:#e74c3c;"></i>
+                <label for="threshold-select">התראה לאחר חוסר תנועה של:</label>
+                <select id="threshold-select" onchange="updateThreshold(this.value)">
+                    <option value="10" selected>10 שניות (בדיקה)</option>
+                    <option value="1800">30 דקות</option>
+                    <option value="3600">שעה</option>
+                    <option value="7200">שעתיים</option>
+                    <option value="sleep">💤 מצב שינה — התראה בהתעוררות</option>
+                </select>
+                <span id="inactive-timer-wrap" style="display:none; align-items:center; gap:6px;">
+                    <span style="font-size:0.88rem; color:#888;">חוסר תנועה:</span>
+                    <strong id="inactive-timer" style="color:#e74c3c; font-size:0.95rem; font-variant-numeric: tabular-nums;">—</strong>
+                </span>
+            </div>
+        </div>
+
+        <!-- Grid: Map (left) | Charts (right) -->
+        <div class="activity-main-grid">
+
+            <!-- Map card -->
+            <div class="glass-card">
+                <h2 class="page-heading"><i class="fas fa-map-marker-alt"></i> מיקום נוכחי</h2>
+                <div id="map-activity" style="border-radius:14px;"></div>
+                <div class="location-details">
+                    <p><i class="fas fa-clock"></i> עודכן לאחרונה: <span id="last-updated">—</span></p>
+                </div>
+            </div>
+
+            <!-- Charts column -->
+            <div class="activity-charts-col">
+                <div class="glass-card">
+                    <h2 class="page-heading" style="font-size:1rem;"><i class="fas fa-chart-bar"></i> פעילות לפי שעה — היום</h2>
+                    <div class="chart-wrap">
+                        <canvas id="hourly-chart"></canvas>
+                    </div>
+                    <p style="font-size:0.75rem; color:#aaa; text-align:center; margin:8px 0 0;">
+                        <span style="display:inline-block; width:10px; height:10px; background:#2a9d8f; border-radius:2px; margin-left:4px;"></span>≥50% פעיל
+                        <span style="display:inline-block; width:10px; height:10px; background:#f4a261; border-radius:2px; margin-right:10px; margin-left:4px;"></span>&lt;50% פעיל
+                    </p>
+                </div>
+                <div class="glass-card">
+                    <h2 class="page-heading" style="font-size:1rem;"><i class="fas fa-calendar-week"></i> סיכום שבועי — 7 ימים</h2>
+                    <div class="chart-wrap chart-wrap-weekly">
+                        <canvas id="weekly-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /.activity-main-grid -->
+    </main>
+
+    <style>
+        /* ── Status row ─────────────────────────────────────────────── */
+        .activity-status-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+
+        .live-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 22px;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 1rem;
+            flex-shrink: 0;
+            transition: background 0.3s, color 0.3s, border-color 0.3s;
+        }
+        .live-badge.moving {
+            background: rgba(42,157,143,0.12);
+            color: #2a9d8f;
+            border: 2px solid rgba(42,157,143,0.35);
+        }
+        .live-badge.resting {
+            background: rgba(244,162,97,0.12);
+            color: #c97a2e;
+            border: 2px solid rgba(244,162,97,0.35);
+        }
+
+        .today-stats-grid {
+            display: flex;
+            gap: 10px;
+            flex: 1;
+            flex-wrap: wrap;
+        }
+        .stat-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            padding: 11px 14px;
+            border-radius: 12px;
+            background: rgba(0,0,0,0.03);
+            border: 1px solid rgba(0,0,0,0.07);
+            flex: 1;
+            min-width: 72px;
+            text-align: center;
+        }
+        .stat-box i      { font-size: 1.1rem; color: #264653; }
+        .stat-value      { font-size: 0.97rem; font-weight: 700; color: #264653; }
+        .stat-label      { font-size: 0.73rem; color: #888; }
+
+        /* ── Alert config bar ───────────────────────────────────────── */
+        .alert-config-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            background: rgba(231,76,60,0.05);
+            border: 1px solid rgba(231,76,60,0.15);
+            border-radius: 10px;
+            flex-wrap: wrap;
+            font-size: 0.9rem;
+        }
+        .alert-config-bar label { font-weight: 600; color: #264653; }
+        .alert-config-bar select {
+            padding: 7px 12px;
+            border-radius: 8px;
+            border: 1.5px solid rgba(231,76,60,0.2);
+            font-family: inherit;
+            font-size: 0.88rem;
+            background: white;
+            cursor: pointer;
+            outline: none;
+            direction: rtl;
+        }
+
+        /* ── Main grid ──────────────────────────────────────────────── */
+        .activity-main-grid {
+            display: flex;
+            flex-direction: column;
+        }
+        .activity-charts-col {
+            display: flex;
+            flex-direction: column;
+        }
+
+        @media (min-width: 1024px) {
+            .activity-main-grid {
+                display: grid;
+                grid-template-columns: 1fr 380px;
+                gap: 20px;
+                align-items: start;
+            }
+            .activity-main-grid > .glass-card { margin-bottom: 0; }
+            .activity-charts-col { gap: 20px; }
+            .activity-charts-col .glass-card { margin-bottom: 0; }
+            .activity-charts-col { position: sticky; top: 20px; }
+        }
+        @media (min-width: 1440px) {
+            .activity-main-grid { grid-template-columns: 1fr 420px; }
+        }
+        @media (min-width: 1920px) {
+            .activity-main-grid { grid-template-columns: 1fr 480px; }
+        }
+
+        /* ── Chart containers ───────────────────────────────────────── */
+        .chart-wrap        { position: relative; height: 175px; }
+        .chart-wrap-weekly { height: 195px; }
+
+        /* ── Map height ─────────────────────────────────────────────── */
+        #map-activity { height: 260px !important; }
+        @media (min-width: 480px)  { #map-activity { height: 300px !important; } }
+        @media (min-width: 769px)  { #map-activity { height: 320px !important; } }
+        @media (min-width: 1024px) { #map-activity { height: 390px !important; } }
+        @media (min-width: 1440px) { #map-activity { height: 430px !important; } }
+        @media (min-width: 1920px) { #map-activity { height: 490px !important; } }
+
+        /* ── Mobile ─────────────────────────────────────────────────── */
+        @media (max-width: 480px) {
+            .activity-status-row { gap: 10px; }
+            .live-badge          { font-size: 0.88rem; padding: 8px 16px; }
+            .today-stats-grid    { gap: 7px; }
+            .stat-box            { padding: 9px 8px; min-width: 60px; }
+            .stat-value          { font-size: 0.87rem; }
+            .stat-label          { font-size: 0.66rem; }
+            .alert-config-bar    { gap: 8px; }
+            .alert-config-bar select { width: 100%; }
+            .chart-wrap          { height: 145px; }
+            .chart-wrap-weekly   { height: 165px; }
+        }
+    </style>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/activity.js"></script>
+</body>
+</html>

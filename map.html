@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pet Tracker — מיקום חי</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+    <!-- מודל התראת יציאה מאזור בטוח -->
+    <div id="alert-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <i class="fas fa-exclamation-triangle pulse-icon"></i>
+                <h3>אזהרת יציאה מאזור בטוח!</h3>
+            </div>
+            <p id="modal-text">טוען נתוני מרחק...</p>
+            <button class="close-modal-btn" onclick="closeAlertModal()">הבנתי, סגור התראה</button>
+        </div>
+    </div>
+
+    <div id="sidebar-root"></div>
+
+    <main class="content-area">
+      <div class="map-content-grid">
+        <div class="glass-card">
+            <h2 class="page-heading"><i class="fas fa-map-marked-alt"></i> מעקב מיקום ורדיוס ביטחון</h2>
+
+            <div style="margin-bottom: 15px; text-align: center;">
+                <span class="distance-display">מרחק נוכחי: <span id="dist-status">מחשב מרחק...</span></span>
+            </div>
+
+            <div id="map-main" style="border-radius: 14px;"></div>
+
+            <div class="map-footer" style="flex-direction: column; gap: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <button class="action-btn" id="btn-set-home" onclick="openZoneEditor()">
+                        <i class="fas fa-home"></i> יצירת אזור בטוח חדש
+                    </button>
+                </div>
+
+                <!-- Zone editor (hidden by default) -->
+                <div id="zone-editor" style="display:none; background:rgba(42,157,143,0.07); border:1.5px solid rgba(42,157,143,0.25); border-radius:14px; padding:18px 20px;">
+
+                    <!-- שלב 1: בחירת מרכז האזור -->
+                    <div id="zone-step-center">
+                        <p style="font-weight:600; color:#264653; margin:0 0 12px;">בחר מרכז האזור הבטוח</p>
+
+                        <div style="display:flex; gap:8px; margin-bottom:8px;">
+                            <input type="text" id="zone-addr-input" placeholder="הזן כתובת למרכז האזור..."
+                                   onkeydown="if(event.key==='Enter') searchZoneAddress()"
+                                   oninput="onZoneAddrInput(this.value)"
+                                   style="flex:1; padding:9px 12px; border-radius:9px; border:1.5px solid rgba(42,157,143,0.3); font-size:0.92rem; outline:none; box-sizing:border-box;">
+                            <button class="action-btn" id="btn-zone-addr-search" onclick="searchZoneAddress()" style="padding:9px 14px; background:#2a9d8f; flex-shrink:0;">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                        <div id="zone-addr-results" style="margin-bottom:10px;"></div>
+
+                        <div style="display:flex; align-items:center; gap:10px; margin:12px 0;">
+                            <div style="flex:1; height:1px; background:rgba(0,0,0,0.1);"></div>
+                            <span style="color:#aaa; font-size:0.85rem;">או</span>
+                            <div style="flex:1; height:1px; background:rgba(0,0,0,0.1);"></div>
+                        </div>
+
+                        <button class="action-btn" id="btn-zone-gps" onclick="setZoneFromGPS()" style="width:100%; background:#264653; box-sizing:border-box;">
+                            <i class="fas fa-crosshairs"></i> השתמש במקום הנוכחי
+                        </button>
+
+                        <button onclick="cancelNewZone()" style="margin-top:10px; background:none; border:none; color:#aaa; font-size:0.85rem; cursor:pointer; padding:0; display:block;">
+                            <i class="fas fa-times"></i> ביטול
+                        </button>
+                    </div>
+
+                    <!-- שלב 2: כיוון רדיוס -->
+                    <div id="zone-step-radius" style="display:none;">
+                        <div id="zone-center-label" style="font-size:0.88rem; color:#2a9d8f; font-weight:600; margin-bottom:14px; padding:8px 12px; background:rgba(42,157,143,0.1); border-radius:8px;"></div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                            <span style="font-weight:600; color:#264653;">רדיוס אזור בטוח</span>
+                            <span style="font-size:1.2rem; font-weight:700; color:#2a9d8f;"><span id="radius-display">100</span> מטרים</span>
+                        </div>
+                        <input type="range" id="radius-slider" min="20" max="250" step="10" value="100"
+                               oninput="onRadiusChange(this.value)"
+                               style="width:100%; accent-color:#2a9d8f; margin-bottom:14px;">
+                        <div style="display:flex; gap:10px;">
+                            <button class="action-btn" onclick="confirmNewZone()" style="flex:1; background:#2a9d8f;">
+                                <i class="fas fa-check"></i> שמור
+                            </button>
+                            <button class="action-btn" onclick="cancelNewZone()" style="flex:1; background:#e74c3c;">
+                                <i class="fas fa-times"></i> ביטול
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- אזורים מועדפים -->
+                <div style="border-top:1px solid rgba(0,0,0,0.07); padding-top:14px; width:100%;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <span style="font-weight:600; color:#264653;"><i class="fas fa-star" style="color:#f4a261;"></i> אזורים מועדפים</span>
+                        <button class="action-btn" onclick="openAddFavorite()" id="btn-add-fav" style="padding:7px 14px; font-size:0.85rem; background:#f4a261;">
+                            <i class="fas fa-plus"></i> שמור אזור נוכחי
+                        </button>
+                    </div>
+
+                    <!-- טופס הוספת מועדף -->
+                    <div id="add-fav-form" style="display:none; background:rgba(244,162,97,0.08); border:1.5px solid rgba(244,162,97,0.3); border-radius:12px; padding:14px 16px; margin-bottom:10px;">
+                        <label style="font-size:0.88rem; font-weight:600; color:#264653; display:block; margin-bottom:6px;">שם האזור</label>
+                        <input type="text" id="fav-name-input" placeholder="למשל: בית, גן שעשועים, מגרש..."
+                               style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:9px; border:1.5px solid rgba(244,162,97,0.4); font-size:0.92rem; margin-bottom:10px; outline:none;">
+                        <div style="display:flex; gap:10px;">
+                            <button class="action-btn" onclick="saveFavorite()" style="flex:1; background:#f4a261;">
+                                <i class="fas fa-star"></i> שמור
+                            </button>
+                            <button class="action-btn" onclick="closeAddFavorite()" style="flex:1; background:#aaa;">
+                                <i class="fas fa-times"></i> ביטול
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="favorites-list">
+                        <p style="color:#aaa; font-size:0.88rem; text-align:center; padding:10px 0;">טוען מועדפים...</p>
+                    </div>
+                </div>
+
+
+                <button class="action-btn navigate-btn" onclick="navigateToDog()">
+                    <i class="fas fa-location-arrow"></i>
+                    <span class="nav-btn-full">פתח ניווט מהבית אל החיה ב-Google Maps</span>
+                    <span class="nav-btn-short">ניווט ב-Google Maps</span>
+                </button>
+            </div>
+
+            <div class="location-details">
+                <p><i class="fas fa-history"></i> מיקום אחרון נראה: <span id="detail-last-seen">טוען...</span></p>
+                <p><i class="fas fa-satellite"></i> דיוק GPS: <span id="detail-accuracy">ממתין ל-GPS...</span></p>
+            </div>
+        </div>
+
+        <!-- היסטוריית מיקומים -->
+        <div class="glass-card map-history-card">
+            <h2 class="page-heading"><i class="fas fa-history"></i> היסטוריית מיקומים אחרונים</h2>
+            <div style="overflow-x:auto;">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>שעה ותאריך</th>
+                            <th>מיקום</th>
+                            <th>סטטוס</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-tbody">
+                        <tr><td colspan="3" style="text-align:center; color:#aaa; padding:18px;">טוען...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+      </div><!-- /.map-content-grid -->
+    </main>
+
+    <style>
+
+        /* ── Layout grid ─────────────────────────────────────────────── */
+        .map-content-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        @media (min-width: 1440px) {
+            .map-content-grid {
+                display: grid;
+                grid-template-columns: 1fr 400px;
+                align-items: start;
+            }
+        }
+        @media (min-width: 1920px) {
+            .map-content-grid {
+                grid-template-columns: 1fr 460px;
+            }
+        }
+
+        /* ── Carte Leaflet — hauteur responsive ──────────────────────── */
+        #map-main { height: 240px; }
+        @media (min-width: 480px)  { #map-main { height: 300px; } }
+        @media (min-width: 769px)  { #map-main { height: 380px; } }
+        @media (min-width: 1024px) { #map-main { height: 440px; } }
+        @media (min-width: 1440px) { #map-main { height: 500px; } }
+        @media (min-width: 1920px) { #map-main { height: 560px; } }
+
+        /* ── Nav button ──────────────────────────────────────────────── */
+        .nav-btn-short { display: none; }
+        @media (max-width: 520px) {
+            .nav-btn-full  { display: none; }
+            .nav-btn-short { display: inline; }
+        }
+
+        /* ── Tableau historique ──────────────────────────────────────── */
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.92rem;
+        }
+        .history-table th {
+            background: rgba(42,157,143,0.1);
+            padding: 10px 14px;
+            text-align: right;
+            font-weight: 600;
+            color: #264653;
+            border-bottom: 2px solid rgba(42,157,143,0.2);
+        }
+        .history-table td {
+            padding: 9px 14px;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            color: #444;
+            vertical-align: middle;
+        }
+        .history-table tr:last-child td { border-bottom: none; }
+        .history-table tr:hover td { background: rgba(42,157,143,0.04); }
+        .history-table td:nth-child(2) { font-size: 0.85rem; color: #888; direction: ltr; text-align: right; }
+
+        @media (max-width: 480px) {
+            .history-table th:nth-child(2),
+            .history-table td:nth-child(2) { display: none; }
+            .history-table th, .history-table td { padding: 8px 10px; }
+            .history-table { font-size: 0.82rem; }
+        }
+
+        /* ── Favoris ─────────────────────────────────────────────────── */
+        .fav-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            border-radius: 10px;
+            background: rgba(244,162,97,0.07);
+            border: 1px solid rgba(244,162,97,0.2);
+            margin-bottom: 8px;
+        }
+        .fav-item:last-child { margin-bottom: 0; }
+        .fav-item-name { font-weight: 600; color: #264653; font-size: 0.93rem; }
+        .fav-item-meta { font-size: 0.8rem; color: #888; margin-top: 2px; }
+        .fav-item-actions { display: flex; gap: 8px; flex-shrink: 0; }
+        .btn-fav-apply {
+            padding: 6px 12px; border-radius: 8px; border: none; cursor: pointer;
+            background: #2a9d8f; color: white; font-size: 0.82rem; font-weight: 600;
+        }
+        .btn-fav-apply:hover { background: #1e7d72; }
+        .btn-fav-delete {
+            padding: 6px 10px; border-radius: 8px; border: none; cursor: pointer;
+            background: rgba(231,76,60,0.1); color: #e74c3c; font-size: 0.82rem;
+        }
+        .btn-fav-delete:hover { background: rgba(231,76,60,0.2); }
+
+        @media (max-width: 480px) {
+            .fav-item { flex-direction: column; align-items: flex-start; gap: 8px; }
+            .fav-item-actions { align-self: flex-end; }
+            .btn-fav-apply, .btn-fav-delete { font-size: 0.78rem; }
+        }
+
+        /* ── Résultats d'adresse ─────────────────────────────────────── */
+        .addr-result-item {
+            padding: 9px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.88rem;
+            color: #264653;
+            border: 1px solid transparent;
+            margin-bottom: 5px;
+            background: rgba(108,142,191,0.06);
+        }
+        .addr-result-item:hover {
+            background: rgba(108,142,191,0.15);
+            border-color: rgba(108,142,191,0.3);
+        }
+        .addr-result-item:last-child { margin-bottom: 0; }
+
+        /* ── Mobile général ──────────────────────────────────────────── */
+        @media (max-width: 768px) {
+            #btn-set-home { width: 100%; justify-content: center; }
+            .navigate-btn { width: 100%; justify-content: center; }
+            .distance-display { font-size: 0.88rem; }
+            #zone-editor { padding: 14px; }
+        }
+
+        /* ── Grand écran ─────────────────────────────────────────────── */
+        @media (min-width: 1440px) {
+            .map-history-card { position: sticky; top: 20px; }
+        }
+    </style>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/map.js"></script>
+</body>
+</html>

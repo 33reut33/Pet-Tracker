@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pet Tracker — חיסונים</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+    <div id="sidebar-root"></div>
+
+    <main class="content-area">
+
+        <!-- ── Formulaire ajout ── -->
+        <div class="glass-card">
+            <h2 class="page-heading"><i class="fas fa-syringe"></i> הוסף חיסון / טיפול</h2>
+            <div class="vax-new-form">
+                <div class="form-group">
+                    <label><i class="fas fa-syringe"></i> סוג החיסון / טיפול</label>
+                    <input type="text" id="vax-type" placeholder="כלבת, תילוע, משושה...">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-calendar-check"></i> תאריך מתן</label>
+                    <input type="date" id="vax-date">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-calendar-times"></i> תאריך תפוגה <small style="font-weight:400;color:#aaa;">(ברירת מחדל: +שנה)</small></label>
+                    <input type="date" id="vax-expiry">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-user-md"></i> שם הוטרינר</label>
+                    <input type="text" id="vax-vet" placeholder="ד&quot;ר...">
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom:14px;">
+                <label><i class="fas fa-sticky-note"></i> הערות <small style="font-weight:400;color:#aaa;">(אופציונלי)</small></label>
+                <input type="text" id="vax-notes" placeholder="הערות נוספות...">
+            </div>
+            <button class="action-btn vax-add-btn" onclick="addVaccine()">
+                <i class="fas fa-plus-circle"></i> הוסף חיסון
+            </button>
+        </div>
+
+        <!-- ── Active + Future grid ── -->
+        <div class="vax-status-grid">
+
+            <div class="glass-card">
+                <h2 class="page-heading" style="color:#e67e22;">
+                    <i class="fas fa-bolt"></i> חיסונים פעילים
+                </h2>
+                <div id="vax-active">
+                    <p class="vax-empty">טוען...</p>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <h2 class="page-heading" style="color:#2a9d8f;">
+                    <i class="fas fa-calendar-alt"></i> חיסונים עתידיים
+                </h2>
+                <div id="vax-future">
+                    <p class="vax-empty">טוען...</p>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ── Historique complet ── -->
+        <div class="glass-card" style="margin-top: 32px;">
+            <h2 class="page-heading"><i class="fas fa-history"></i> היסטוריה מלאה</h2>
+            <div style="overflow-x:auto;">
+                <table class="vax-history-table">
+                    <thead>
+                        <tr>
+                            <th>סוג חיסון</th>
+                            <th>תאריך מתן</th>
+                            <th>תאריך תפוגה</th>
+                            <th>וטרינר</th>
+                            <th>הערות</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="vax-history-tbody">
+                        <tr><td colspan="6" style="text-align:center;color:#aaa;padding:20px;">טוען...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <style>
+        /* ── Form grid ───────────────────────────────────────────────── */
+        .vax-new-form {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .vax-add-btn {
+            width: 100%;
+            justify-content: center;
+            padding: 13px;
+            font-size: 1rem;
+            border-radius: 12px;
+        }
+
+        /* ── Status grid ─────────────────────────────────────────────── */
+        .vax-status-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .vax-status-grid > .glass-card { margin-bottom: 0; }
+
+        /* ── Vaccine cards ───────────────────────────────────────────── */
+        .vax-card {
+            background: white;
+            border-radius: 12px;
+            padding: 12px 14px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(0,0,0,0.07);
+            transition: box-shadow 0.2s;
+        }
+        .vax-card:last-child { margin-bottom: 0; }
+        .vax-card:hover { box-shadow: 0 3px 12px rgba(0,0,0,0.08); }
+
+        .vax-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .vax-card-info strong {
+            display: block;
+            font-size: 0.93rem;
+            color: #264653;
+            margin-bottom: 4px;
+        }
+        .vax-card-info small {
+            color: #888;
+            font-size: 0.76rem;
+            line-height: 1.6;
+        }
+
+        /* ── Progress bar ────────────────────────────────────────────── */
+        .vax-progress-wrap { margin-bottom: 10px; }
+        .vax-progress-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.76rem;
+            color: #888;
+            margin-bottom: 5px;
+        }
+        .vax-progress-bar {
+            height: 8px;
+            background: rgba(0,0,0,0.07);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .vax-progress-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.5s ease;
+        }
+        .vax-progress-pct {
+            font-size: 0.72rem;
+            color: #aaa;
+            text-align: center;
+            margin-top: 4px;
+        }
+
+        /* ── Card actions ────────────────────────────────────────────── */
+        .vax-card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+        .btn-reminder {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 13px;
+            border-radius: 8px;
+            border: 1.5px solid rgba(244,162,97,0.5);
+            background: rgba(244,162,97,0.1);
+            color: #c97a2e;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .btn-reminder:hover { background: rgba(244,162,97,0.2); }
+        .btn-reminder--active {
+            background: rgba(42,157,143,0.12);
+            border-color: rgba(42,157,143,0.4);
+            color: #2a9d8f;
+        }
+        .btn-reminder--active:hover { background: rgba(42,157,143,0.2); }
+
+        .vax-delete {
+            background: none;
+            border: none;
+            color: #e74c3c;
+            cursor: pointer;
+            padding: 5px 8px;
+            border-radius: 7px;
+            font-size: 0.88rem;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+        .vax-delete:hover { background: #fdecea; }
+
+        .vax-badge--future {
+            display: inline-block;
+            margin-top: 4px;
+            background: rgba(42,157,143,0.1);
+            color: #2a9d8f;
+            font-size: 0.73rem;
+            font-weight: 600;
+            padding: 2px 9px;
+            border-radius: 12px;
+            border: 1px solid rgba(42,157,143,0.25);
+        }
+
+        .vax-empty {
+            color: #ccc;
+            font-size: 0.82rem;
+            text-align: center;
+            padding: 28px 0;
+        }
+
+        /* ── History table ───────────────────────────────────────────── */
+        .vax-history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88rem;
+        }
+        .vax-history-table th {
+            background: rgba(42,157,143,0.08);
+            padding: 10px 14px;
+            text-align: right;
+            font-weight: 600;
+            color: #264653;
+            border-bottom: 2px solid rgba(42,157,143,0.15);
+            white-space: nowrap;
+        }
+        .vax-history-table td {
+            padding: 9px 14px;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            color: #555;
+            vertical-align: middle;
+        }
+        .vax-history-table tr:last-child td { border-bottom: none; }
+        .vax-history-table tr:hover td { background: rgba(42,157,143,0.03); }
+
+        /* ── Responsive ──────────────────────────────────────────────── */
+        @media (max-width: 1023px) {
+            .vax-status-grid { grid-template-columns: 1fr; gap: 0; }
+            .vax-status-grid > .glass-card { margin-bottom: 20px; }
+        }
+        @media (max-width: 768px) {
+            .vax-new-form { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 480px) {
+            .vax-new-form { grid-template-columns: 1fr; }
+            .vax-history-table th:nth-child(4),
+            .vax-history-table td:nth-child(4) { display: none; }
+            .vax-history-table th:nth-child(5),
+            .vax-history-table td:nth-child(5) { display: none; }
+            .vax-card-actions { flex-direction: column; }
+            .btn-reminder { font-size: 0.76rem; }
+        }
+    </style>
+
+    <script src="js/auth.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/vaccines.js"></script>
+</body>
+</html>

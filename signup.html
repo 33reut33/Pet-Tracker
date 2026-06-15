@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pet Tracker — הצטרפות</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body class="auth-body">
+    <main class="content-area auth-content" style="margin:0; width:100%; max-width:100%;">
+
+        <div class="signup-hero">
+            <div class="hero-icon"><i class="fas fa-paw"></i></div>
+            <h1>ברוכים הבאים ל-Pet Tracker</h1>
+            <p>צרו חשבון חינמי ועקבו אחר החיה שלכם בכל מקום</p>
+        </div>
+
+        <div class="signup-layout">
+
+            <!-- טופס -->
+            <div class="glass-card">
+                <h2 class="page-heading"><i class="fas fa-user-plus"></i> יצירת חשבון</h2>
+
+                <div id="alert-error" class="alert error" style="display:none;"></div>
+                <div id="alert-success" class="alert success" style="display:none;">
+                    <i class="fas fa-check-circle"></i> נרשמתם בהצלחה! ברוכים הבאים 🎉
+                </div>
+
+                <form id="signup-form" onsubmit="handleSignup(event)" novalidate>
+
+                    <div class="section-divider">פרטים אישיים</div>
+                    <div class="two-col">
+                        <div class="form-group">
+                            <label><i class="fas fa-user"></i> שם פרטי</label>
+                            <input type="text" id="su-firstname" placeholder="ישראל" required>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-user"></i> שם משפחה</label>
+                            <input type="text" id="su-lastname" placeholder="ישראלי" required>
+                        </div>
+                    </div>
+                    <div class="two-col" style="margin-top:12px;">
+                        <div class="form-group">
+                            <label><i class="fas fa-envelope"></i> אימייל</label>
+                            <input type="email" id="su-email" placeholder="mail@example.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-phone"></i> טלפון</label>
+                            <input type="tel" id="su-phone" placeholder="050-0000000">
+                        </div>
+                    </div>
+                    <div class="two-col" style="margin-top:12px;">
+                        <div class="form-group">
+                            <label><i class="fas fa-lock"></i> סיסמה</label>
+                            <div class="password-wrap">
+                                <input type="password" id="su-password" placeholder="לפחות 8 תווים" required>
+                                <i class="fas fa-eye toggle-pw" onclick="togglePw('su-password', this)"></i>
+                            </div>
+                            <div class="pw-strength-bar">
+                                <div class="pw-strength-fill" id="pw-fill"></div>
+                            </div>
+                            <span class="pw-strength-label" id="pw-label"></span>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-lock"></i> אישור סיסמה</label>
+                            <div class="password-wrap">
+                                <input type="password" id="su-confirm" placeholder="חזרו על הסיסמה" required>
+                                <i class="fas fa-eye toggle-pw" onclick="togglePw('su-confirm', this)"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-divider" style="margin-top:24px;">פרטי החיות</div>
+                    <div id="pets-container"></div>
+                    <button type="button" class="add-pet-btn" onclick="addPetBlock()">
+                        <i class="fas fa-plus-circle"></i> הוסף חיה נוספת
+                    </button>
+
+                    <div class="terms-row">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="su-terms" required>
+                            <span>קראתי ואני מסכים/ה ל<a href="#">תנאי השימוש</a> ולמדיניות הפרטיות</span>
+                        </label>
+                    </div>
+
+                    <button type="submit" id="signup-btn" class="action-btn signup-submit">
+                        <i class="fas fa-rocket"></i> צרו חשבון עכשיו
+                    </button>
+
+                </form>
+            </div>
+
+            <!-- יתרונות -->
+            <div class="benefits-col">
+                <div class="glass-card benefit-card">
+                    <div class="benefit-icon"><i class="fas fa-map-marked-alt"></i></div>
+                    <h3>GPS בזמן אמת</h3>
+                    <p>דעו תמיד היכן החיה שלכם עם דיוק של מטרים בודדים</p>
+                </div>
+                <div class="glass-card benefit-card">
+                    <div class="benefit-icon"><i class="fas fa-bell"></i></div>
+                    <h3>התראות חכמות</h3>
+                    <p>קבלו התראה מיידית אם החיה עוזבת את אזור הבטיחות</p>
+                </div>
+                <div class="glass-card benefit-card">
+                    <div class="benefit-icon"><i class="fas fa-syringe"></i></div>
+                    <h3>ניהול בריאות</h3>
+                    <p>מעקב חיסונים, ביקורי וטרינר והיסטוריה רפואית מלאה</p>
+                </div>
+                <div class="glass-card benefit-card free-card">
+                    <div class="benefit-icon free-icon"><i class="fas fa-gift"></i></div>
+                    <h3>חינם לחלוטין!</h3>
+                    <p>ללא עלות, ללא כרטיס אשראי — מתחילים עכשיו</p>
+                </div>
+                <p class="login-hint">כבר רשומים? <a href="index.html">כניסה לחשבון</a></p>
+            </div>
+
+        </div>
+    </main>
+
+    <style>
+        .pet-block {
+            border: 2px solid rgba(42,157,143,0.25);
+            border-radius: 16px;
+            padding: 18px 16px 14px;
+            margin-bottom: 14px;
+            background: rgba(42,157,143,0.03);
+            position: relative;
+        }
+        .pet-block-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+        .pet-block-label {
+            font-weight: 700;
+            color: #264653;
+            font-size: 0.95rem;
+        }
+        .remove-pet-btn {
+            background: rgba(231,76,60,0.1);
+            border: 1px solid rgba(231,76,60,0.3);
+            color: #e74c3c;
+            border-radius: 8px;
+            padding: 4px 12px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            transition: background 0.2s;
+        }
+        .remove-pet-btn:hover { background: rgba(231,76,60,0.2); }
+        .add-vax-btn {
+            background: rgba(42,157,143,0.1);
+            border: 1px solid rgba(42,157,143,0.35);
+            color: #2a9d8f;
+            border-radius: 8px;
+            padding: 5px 12px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .add-vax-btn:hover { background: rgba(42,157,143,0.2); }
+        .vaccine-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr auto;
+            gap: 8px;
+            margin-bottom: 8px;
+            align-items: center;
+        }
+        .vaccine-row input {
+            padding: 8px 10px;
+            border: 1.5px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            width: 100%;
+        }
+        .remove-vax-btn {
+            background: none;
+            border: none;
+            color: #e74c3c;
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 4px 6px;
+        }
+        .vax-date-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .vax-date-wrap small {
+            font-size: 0.72rem;
+            color: #888;
+            font-weight: 600;
+        }
+        @media (max-width: 600px) {
+            .vaccine-row { grid-template-columns: 1fr auto; }
+            .vaccine-row input:nth-child(2),
+            .vaccine-row input:nth-child(3) { grid-column: 1; }
+        }
+        .add-pet-btn {
+            width: 100%;
+            padding: 12px;
+            background: rgba(42,157,143,0.08);
+            border: 2px dashed rgba(42,157,143,0.4);
+            border-radius: 12px;
+            color: #2a9d8f;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 8px;
+            transition: background 0.2s;
+        }
+        .add-pet-btn:hover { background: rgba(42,157,143,0.15); }
+    </style>
+    <script src="js/signup.js"></script>
+    <script>
+        // Init first pet block on load
+        addPetBlock(true);
+    </script>
+</body>
+</html>

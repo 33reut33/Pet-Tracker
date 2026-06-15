@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pet Tracker — דף הבית</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="css/main.css">
+    <style>
+        /* ── Pet selection screen ── */
+        .pet-select-screen {
+            position: fixed;
+            inset: 0;
+            background: var(--gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 24px;
+        }
+        .pet-select-box {
+            background: rgba(255,255,255,0.97);
+            border-radius: 24px;
+            padding: 40px 36px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        .psa-logo { font-size: 3rem; color: #ff8400; margin-bottom: 12px; }
+        .psa-title { font-size: 1.6rem; font-weight: 700; color: #264653; margin: 0 0 6px; }
+        .psa-sub   { color: #888; margin: 0 0 32px; font-size: 0.95rem; }
+        .pet-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .pet-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 18px;
+            padding: 24px 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #fafafa;
+        }
+        .pet-card:hover  { border-color: #2a9d8f; background: rgba(42,157,143,0.06); transform: translateY(-3px); box-shadow: 0 8px 20px rgba(42,157,143,0.15); }
+        .pet-card.selected { border-color: #2a9d8f; background: rgba(42,157,143,0.1); }
+        .pet-card-emoji  { font-size: 2.8rem; margin-bottom: 10px; }
+        .pet-card h3     { margin: 0 0 4px; font-size: 1.05rem; color: #264653; }
+        .pet-card p      { margin: 0; font-size: 0.82rem; color: #888; }
+        .pet-select-loading { color: #888; font-size: 0.95rem; }
+
+        /* ── Alerts filters ── */
+        .alerts-header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px; }
+        .filter-tabs { display:flex; gap:8px; }
+        .filter-btn {
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 2px solid #e0e0e0;
+            background: #f5f5f5;
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: #555;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .filter-btn.active {
+            border-color: #2a9d8f;
+            background: rgba(42,157,143,0.1);
+            color: #2a9d8f;
+            font-weight: 700;
+        }
+        .unread-badge {
+            display: inline-block;
+            background: #e74c3c;
+            color: white;
+            border-radius: 10px;
+            padding: 1px 6px;
+            font-size: 0.73rem;
+            margin-right: 4px;
+            vertical-align: middle;
+        }
+        .alert-type-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .mark-read-btn {
+            padding: 4px 10px;
+            border-radius: 8px;
+            border: none;
+            background: #2a9d8f;
+            color: white;
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .mark-read-btn:hover { background: #1e755a; }
+        tr.row-unread td { background: rgba(231,76,60,0.035); }
+
+        /* ── Home widgets (profile + mini-map) ── */
+        .home-widgets {
+            display: grid;
+            grid-template-columns: 1fr 1.6fr;
+            gap: 20px;
+            align-items: start;
+        }
+        @media (max-width: 768px) {
+            .home-widgets { grid-template-columns: 1fr; }
+        }
+        .pet-profile-card { display: flex; flex-direction: column; }
+        .pet-profile-top {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .pet-profile-avatar {
+            flex-shrink: 0;
+            width: 100px;
+            height: 100px;
+            border-radius: 18px;
+            overflow: hidden;
+            background: rgba(42,157,143,0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            border: 2px solid rgba(42,157,143,0.2);
+            transition: border-color 0.2s;
+        }
+        .pet-profile-avatar:hover { border-color: #2a9d8f; }
+        .pet-profile-avatar:hover .avatar-overlay { opacity: 1; }
+        .pet-profile-avatar img {
+            width: 100%; height: 100%;
+            object-fit: cover;
+        }
+        .pet-profile-emoji {
+            font-size: 3.8rem;
+            line-height: 1;
+        }
+        .avatar-wrapper #remove-photo-btn {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+        .avatar-wrapper:hover #remove-photo-btn {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .avatar-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s;
+            border-radius: 16px;
+            color: white;
+            font-size: 1.3rem;
+        }
+        .pet-profile-info h3 { margin: 0 0 4px; font-size: 1.25rem; color: #264653; }
+        .pet-profile-info .profile-species { margin: 0; color: #2a9d8f; font-size: 0.88rem; font-weight: 600; }
+        .pet-profile-stats { display: flex; flex-direction: column; gap: 10px; flex: 1; }
+        .profile-stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        .profile-stat-label { color: #666; font-size: 0.87rem; }
+        .profile-stat-label i { margin-left: 6px; color: #2a9d8f; width: 14px; }
+        .profile-stat-value { font-weight: 700; color: #264653; font-size: 0.9rem; }
+        .mini-map-card { display: flex; flex-direction: column; }
+        .mini-map-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .mini-map-link {
+            font-size: 0.85rem;
+            color: #2a9d8f;
+            text-decoration: none;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .mini-map-link:hover { text-decoration: underline; }
+        #map-home { height: 260px !important; width: 100%; border-radius: 12px; overflow: hidden; display: block; }
+
+        /* ── Edit pet modal ── */
+        .edit-modal-backdrop {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 3000;
+            display: flex; align-items: center; justify-content: center;
+            padding: 20px;
+        }
+        .edit-modal {
+            background: white;
+            border-radius: 20px;
+            padding: 32px 28px;
+            max-width: 460px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .edit-modal h3 { margin: 0 0 22px; font-size: 1.15rem; color: #264653; }
+        .edit-modal .form-group { margin-bottom: 14px; }
+        .edit-modal label { display: block; font-size: 0.85rem; color: #555; margin-bottom: 5px; font-weight: 600; }
+        .edit-modal label i { margin-left: 5px; color: #2a9d8f; }
+        .edit-modal input, .edit-modal select {
+            width: 100%; padding: 10px 12px;
+            border: 1.5px solid #e0e0e0; border-radius: 10px;
+            font-size: 0.92rem; font-family: inherit;
+            box-sizing: border-box; color: #264653;
+            transition: border-color 0.2s;
+        }
+        .edit-modal input:focus, .edit-modal select:focus {
+            outline: none; border-color: #2a9d8f;
+        }
+        .edit-modal-actions { display: flex; gap: 10px; margin-top: 22px; }
+        .edit-modal-actions button { flex: 1; padding: 11px; border-radius: 12px; border: none; font-size: 0.95rem; font-family: inherit; cursor: pointer; font-weight: 600; transition: all 0.2s; }
+        .btn-save { background: #2a9d8f; color: white; }
+        .btn-save:hover { background: #1e755a; }
+        .btn-cancel { background: #f0f0f0; color: #555; }
+        .btn-cancel:hover { background: #e0e0e0; }
+    </style>
+</head>
+<body>
+
+    <!-- ── Pet selection overlay ── -->
+    <div id="pet-select-screen" class="pet-select-screen">
+        <div class="pet-select-box">
+            <div class="psa-logo"><i class="fas fa-paw"></i></div>
+            <h2 class="psa-title">שלום! באיזו חיה תרצו לצפות?</h2>
+            <p class="psa-sub">בחרו את החיה מרשימת החיות שלכם</p>
+            <div id="pet-cards-grid" class="pet-cards-grid">
+                <p class="pet-select-loading"><i class="fas fa-spinner fa-spin"></i> טוען...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Dashboard ── -->
+    <div id="sidebar-root"></div>
+
+    <main class="content-area" id="dashboard" style="visibility:hidden; pointer-events:none;">
+
+            <div class="hero-card">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
+                    <div>
+                        <h1 style="margin:0;">שלום, <span id="greeting-name">...</span></h1>
+                        <p class="hero-subtitle" style="margin:4px 0 0;">הכל תקין — הקולר פעיל ומחובר</p>
+                    </div>
+                    <button onclick="showPetSelector()" style="background:rgba(42,157,143,0.12); border:2px solid rgba(42,157,143,0.3); border-radius:12px; padding:8px 16px; cursor:pointer; font-size:0.88rem; color:#264653; white-space:nowrap;">
+                        🔄 החלף חיה
+                    </button>
+                </div>
+                <div class="stats-row">
+                    <div class="glass-stat">
+                        <i class="fas fa-heartbeat"></i>
+                        <span>מצב בריאות</span>
+                        <strong id="stat-health">תקין</strong>
+                    </div>
+                    <div class="glass-stat">
+                        <i class="fas fa-battery-three-quarters"></i>
+                        <span>סוללת קולר</span>
+                        <strong>92%</strong>
+                    </div>
+                    <div class="glass-stat">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>אזור בטוח</span>
+                        <strong id="stat-zone">בודק...</strong>
+                    </div>
+                    <div class="glass-stat">
+                        <i class="fas fa-satellite"></i>
+                        <span>GPS</span>
+                        <strong id="stat-gps">בודק...</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="quick-grid">
+                <a class="quick-card" href="map.html">
+                    <i class="fas fa-map-marked-alt"></i>
+                    <span>מיקום חי</span>
+                </a>
+                <a class="quick-card" href="activity.html">
+                    <i class="fas fa-running"></i>
+                    <span>פעילות</span>
+                </a>
+                <a class="quick-card" href="vaccines.html">
+                    <i class="fas fa-syringe"></i>
+                    <span>חיסונים</span>
+                </a>
+                <a class="quick-card" href="medical.html">
+                    <i class="fas fa-file-medical"></i>
+                    <span>תיק רפואי</span>
+                </a>
+            </div>
+
+            <!-- ── Widgets : profil + mini-carte ── -->
+            <div class="home-widgets">
+
+                <!-- Profil de l'animal -->
+                <div class="glass-card pet-profile-card">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                        <h2 class="page-heading" style="margin:0;"><i class="fas fa-paw"></i> פרופיל</h2>
+                        <button onclick="openEditPet()" style="background:rgba(42,157,143,0.1); border:1.5px solid rgba(42,157,143,0.3); border-radius:10px; padding:6px 12px; cursor:pointer; font-size:0.82rem; color:#2a9d8f; font-weight:600; font-family:inherit;"><i class="fas fa-pen"></i> ערוך</button>
+                    </div>
+                    <div class="pet-profile-top">
+                        <div class="avatar-wrapper" style="position:relative; flex-shrink:0;">
+                            <div class="pet-profile-avatar" onclick="document.getElementById('photo-input').click()" title="שנה תמונה">
+                                <span class="pet-profile-emoji" id="profile-emoji">🐾</span>
+                                <img id="profile-photo" src="" alt="" style="display:none;">
+                                <div class="avatar-overlay"><i class="fas fa-camera"></i></div>
+                            </div>
+                            <button id="remove-photo-btn" onclick="removePetPhoto(); event.stopPropagation();" title="הסר תמונה" style="display:none; position:absolute; top:-8px; left:-8px; width:26px; height:26px; border-radius:50%; border:2.5px solid white; background:#e74c3c; color:white; font-size:0.72rem; cursor:pointer; padding:0; z-index:10; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,0.2);"><i class="fas fa-times"></i></button>
+                            <input type="file" id="photo-input" accept="image/*" style="display:none;" onchange="uploadPetPhoto(this)">
+                        </div>
+                        <div class="pet-profile-info">
+                            <h3 id="profile-name">טוען...</h3>
+                            <p class="profile-species" id="profile-species"></p>
+                        </div>
+                    </div>
+                    <div class="pet-profile-stats">
+                        <div class="profile-stat">
+                            <span class="profile-stat-label"><i class="fas fa-birthday-cake"></i> גיל</span>
+                            <span class="profile-stat-value" id="profile-age">—</span>
+                        </div>
+                        <div class="profile-stat">
+                            <span class="profile-stat-label"><i class="fas fa-weight"></i> משקל</span>
+                            <span class="profile-stat-value" id="profile-weight">—</span>
+                        </div>
+                        <div class="profile-stat">
+                            <span class="profile-stat-label"><i class="fas fa-dna"></i> גזע</span>
+                            <span class="profile-stat-value" id="profile-breed">—</span>
+                        </div>
+                        <div class="profile-stat">
+                            <span class="profile-stat-label"><i class="fas fa-stethoscope"></i> וטרינר</span>
+                            <span class="profile-stat-value" id="profile-vet">—</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mini-carte -->
+                <div class="glass-card mini-map-card">
+                    <div class="mini-map-header">
+                        <h2 class="page-heading" style="margin:0;"><i class="fas fa-map-marker-alt"></i> מיקום נוכחי</h2>
+                        <a href="map.html" class="mini-map-link"><i class="fas fa-expand-alt"></i> מפה מלאה</a>
+                    </div>
+                    <div id="map-home"></div>
+                </div>
+
+            </div>
+
+            <div class="glass-card">
+                <div class="alerts-header">
+                    <h2 class="page-heading" style="margin:0;"><i class="fas fa-bell"></i> התראות אחרונות</h2>
+                    <div class="filter-tabs">
+                        <button id="filter-all" class="filter-btn active" onclick="setFilter('all')">הכל</button>
+                        <button id="filter-unread" class="filter-btn" onclick="setFilter('unread')">לא נקראו <span id="unread-count" class="unread-badge" style="display:none;"></span></button>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr><th>תאריך</th><th>סוג</th><th>אירוע</th><th>סטטוס</th></tr>
+                    </thead>
+                    <tbody id="alerts-tbody">
+                        <tr><td colspan="4" style="text-align:center;color:#888;">טוען...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+    </main>
+
+    <!-- ── Edit pet modal ── -->
+    <div id="edit-pet-modal" class="edit-modal-backdrop" style="display:none;" onclick="if(event.target===this) closeEditPet()">
+        <div class="edit-modal">
+            <h3><i class="fas fa-paw" style="color:#2a9d8f;margin-left:8px;"></i> עריכת פרטי החיה</h3>
+            <form id="edit-pet-form" onsubmit="submitEditPet(event)">
+                <div class="form-group">
+                    <label><i class="fas fa-tag"></i> שם</label>
+                    <input type="text" id="edit-name" required>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-paw"></i> סוג</label>
+                    <select id="edit-species">
+                        <option value="dog">כלב</option>
+                        <option value="cat">חתול</option>
+                        <option value="rabbit">ארנב</option>
+                        <option value="other">אחר</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-dna"></i> גזע</label>
+                    <input type="text" id="edit-breed" placeholder="לא חובה">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-birthday-cake"></i> תאריך לידה</label>
+                    <input type="date" id="edit-birth-date">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-weight"></i> משקל (ק"ג)</label>
+                    <input type="number" id="edit-weight" step="0.1" min="0" placeholder="לא חובה">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-stethoscope"></i> וטרינר</label>
+                    <input type="text" id="edit-vet" placeholder="לא חובה">
+                </div>
+                <div class="edit-modal-actions">
+                    <button type="submit" class="btn-save" id="edit-save-btn"><i class="fas fa-check"></i> שמור</button>
+                    <button type="button" class="btn-cancel" onclick="closeEditPet()">ביטול</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script>
+    const SPECIES_EMOJI = { dog:'🐶', cat:'🐱', rabbit:'🐰', other:'🐾' };
+    let _pets      = [];
+    let _alerts    = [];
+    let _filter    = 'all';
+    let _homeMap          = null;
+    let _homeMarker       = null;
+    let _locationInterval = null;
+    let _currentPet       = null;
+
+    const SPECIES_LABEL = { dog: 'כלב', cat: 'חתול', rabbit: 'ארנב', other: 'חיה' };
+
+    function petAge(birth_date) {
+        if (!birth_date) return '—';
+        const ms     = Date.now() - new Date(birth_date).getTime();
+        const years  = Math.floor(ms / (365.25 * 24 * 3600 * 1000));
+        if (years < 1) {
+            const months = Math.floor(ms / (30.44 * 24 * 3600 * 1000));
+            return months > 0 ? months + ' חודשים' : 'פחות מחודש';
+        }
+        return years + (years === 1 ? ' שנה' : ' שנים');
+    }
+
+    function openEditPet() {
+        if (!_currentPet) return;
+        document.getElementById('edit-name').value       = _currentPet.name       || '';
+        document.getElementById('edit-species').value    = _currentPet.species    || 'dog';
+        document.getElementById('edit-breed').value      = (_currentPet.breed && _currentPet.breed.toLowerCase() !== 'null') ? _currentPet.breed : '';
+        document.getElementById('edit-birth-date').value = _currentPet.birth_date ? _currentPet.birth_date.split(' ')[0] : '';
+        document.getElementById('edit-weight').value     = _currentPet.weight     || '';
+        document.getElementById('edit-vet').value        = _currentPet.vet_name   || '';
+        document.getElementById('edit-pet-modal').style.display = 'flex';
+    }
+
+    function closeEditPet() {
+        document.getElementById('edit-pet-modal').style.display = 'none';
+    }
+
+    async function submitEditPet(e) {
+        e.preventDefault();
+        const btn = document.getElementById('edit-save-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> שומר...';
+        const payload = {
+            name:       document.getElementById('edit-name').value.trim(),
+            species:    document.getElementById('edit-species').value,
+            breed:      document.getElementById('edit-breed').value.trim() || null,
+            birth_date: document.getElementById('edit-birth-date').value  || null,
+            weight:     document.getElementById('edit-weight').value      || null,
+            vet_name:   document.getElementById('edit-vet').value.trim()  || null,
+            collar_id:  _currentPet.collar_id || null,
+        };
+        try {
+            const res = await fetch('api/pet.php', {
+                method:  'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify(payload),
+            });
+            const data = await res.json();
+            if (data.success) {
+                Object.assign(_currentPet, payload);
+                renderPetProfile(_currentPet);
+                closeEditPet();
+                // Sync greeting + sidebar (nom + poids)
+                document.getElementById('greeting-name').textContent =
+                    _currentPet.name + ' מחכה לך! ' + (SPECIES_EMOJI[_currentPet.species] || '🐾');
+                if (window.updateSidebarPet) window.updateSidebarPet(_currentPet);
+            }
+        } catch { /* ignore */ }
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-check"></i> שמור';
+    }
+
+    function renderPetProfile(pet) {
+        _currentPet = pet;
+        document.getElementById('profile-name').textContent    = pet.name || '—';
+        document.getElementById('profile-species').textContent = SPECIES_LABEL[pet.species] || pet.species || '—';
+        document.getElementById('profile-age').textContent     = petAge(pet.birth_date);
+        document.getElementById('profile-weight').textContent  = pet.weight ? pet.weight + ' ק"ג' : '—';
+        document.getElementById('profile-breed').textContent   = (pet.breed && pet.breed.toLowerCase() !== 'null') ? pet.breed : '—';
+        document.getElementById('profile-vet').textContent     = pet.vet_name || '—';
+
+        const photoEl     = document.getElementById('profile-photo');
+        const emojiEl     = document.getElementById('profile-emoji');
+        const removeBtn   = document.getElementById('remove-photo-btn');
+        if (pet.photo_url) {
+            photoEl.src            = pet.photo_url;
+            photoEl.style.display  = 'block';
+            emojiEl.style.display  = 'none';
+            removeBtn.style.display = 'flex';
+        } else {
+            emojiEl.textContent     = SPECIES_EMOJI[pet.species] || '🐾';
+            emojiEl.style.display   = 'block';
+            photoEl.style.display   = 'none';
+            removeBtn.style.display = 'none';
+        }
+    }
+
+    async function uploadPetPhoto(input) {
+        if (!input.files || !input.files[0]) return;
+        const formData = new FormData();
+        formData.append('photo', input.files[0]);
+        try {
+            const res  = await fetch('api/upload_photo.php', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.photo_url) {
+                const photoEl   = document.getElementById('profile-photo');
+                const emojiEl   = document.getElementById('profile-emoji');
+                const removeBtn = document.getElementById('remove-photo-btn');
+                photoEl.src             = data.photo_url + '?t=' + Date.now();
+                photoEl.style.display   = 'block';
+                emojiEl.style.display   = 'none';
+                removeBtn.style.display = 'flex';
+            }
+        } catch { /* ignore */ }
+        input.value = '';
+    }
+
+    async function removePetPhoto() {
+        try {
+            const res = await fetch('api/upload_photo.php', { method: 'DELETE' });
+            if (!res.ok) return;
+            const photoEl   = document.getElementById('profile-photo');
+            const emojiEl   = document.getElementById('profile-emoji');
+            const removeBtn = document.getElementById('remove-photo-btn');
+            photoEl.style.display   = 'none';
+            photoEl.src             = '';
+            emojiEl.textContent     = SPECIES_EMOJI[_currentPet?.species] || '🐾';
+            emojiEl.style.display   = 'block';
+            removeBtn.style.display = 'none';
+            if (_currentPet) _currentPet.photo_url = null;
+        } catch { /* ignore */ }
+    }
+
+    function initHomeMap(lat, lng) {
+        const icon = L.divIcon({
+            className: '',
+            html: '<div style="background:#2a9d8f;width:18px;height:18px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);"></div>',
+            iconSize: [18, 18],
+            iconAnchor: [9, 9],
+        });
+
+        if (_homeMap) {
+            _homeMarker.setLatLng([lat, lng]);
+            _homeMap.invalidateSize(false);
+            _homeMap.setView([lat, lng], 15, { animate: false });
+            return;
+        }
+
+        // Force explicit height via JS so Leaflet always reads the correct size
+        const el = document.getElementById('map-home');
+        el.style.height = '260px';
+
+        // setTimeout(0) defers creation to next event loop tick — container is fully painted
+        setTimeout(() => {
+            _homeMap = L.map(el, {
+                center: [lat, lng],
+                zoom: 15,
+                zoomControl: false,
+                scrollWheelZoom: false,
+                dragging: false,
+                doubleClickZoom: false,
+                attributionControl: false,
+            });
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(_homeMap);
+            _homeMarker = L.marker([lat, lng], { icon }).addTo(_homeMap);
+        }, 0);
+    }
+
+    const ALERT_TYPE_MAP = {
+        zone_exit:   { icon: 'fas fa-map-marker-alt', label: 'יציאה מאזור', bg: 'rgba(231,76,60,0.12)',  color: '#c0392b' },
+        immobility:  { icon: 'fas fa-bed',            label: 'חוסר תנועה',  bg: 'rgba(243,156,18,0.12)', color: '#d68910' },
+        vaccine_due: { icon: 'fas fa-syringe',        label: 'חיסון',        bg: 'rgba(52,152,219,0.12)', color: '#1a6fa0' },
+    };
+
+    function showPetSelector() {
+        // Re-render les cartes à partir de _pets chargés
+        if (_pets.length > 0) {
+            document.getElementById('pet-cards-grid').innerHTML = _pets.map(p => {
+                const emoji = SPECIES_EMOJI[p.species] || '🐾';
+                const sub   = (p.breed && p.breed.toLowerCase() !== 'null')
+                    ? p.breed : (p.species || '—');
+                return `
+                <div class="pet-card" onclick="selectPetById(${p.id_pet})">
+                    <div class="pet-card-emoji">${emoji}</div>
+                    <h3>${p.name}</h3>
+                    <p>${sub}</p>
+                </div>`;
+            }).join('');
+        }
+        if (_locationInterval) { clearInterval(_locationInterval); _locationInterval = null; }
+        const dash = document.getElementById('dashboard');
+        dash.style.visibility    = 'hidden';
+        dash.style.pointerEvents = 'none';
+        document.getElementById('pet-select-screen').style.display = 'flex';
+    }
+
+    async function initPetSelection() {
+        // Si un animal est déjà sélectionné en session, on l'utilise directement
+        try {
+            const authRes  = await fetch('api/auth_check.php');
+            const authData = await authRes.json();
+            if (authData.selected_pet) {
+                _pets = [authData.selected_pet];
+                await _showDashboard(authData.selected_pet);
+                // Charge aussi tous les animaux en arrière-plan pour le bouton switch
+                fetch('api/pets.php').then(r => r.json()).then(p => { _pets = p; });
+                return;
+            }
+        } catch { /* ignore */ }
+
+        try {
+            const res  = await fetch('api/pets.php');
+            _pets      = await res.json();
+
+            if (!Array.isArray(_pets) || _pets.length === 0) {
+                document.getElementById('pet-cards-grid').innerHTML =
+                    '<p style="color:#e74c3c;">לא נמצאו חיות.</p>';
+                return;
+            }
+
+            if (_pets.length === 1) {
+                selectPetById(_pets[0].id_pet);
+                return;
+            }
+
+            const grid = document.getElementById('pet-cards-grid');
+            grid.innerHTML = _pets.map(p => {
+                const emoji = SPECIES_EMOJI[p.species] || '🐾';
+                const sub   = (p.breed && p.breed.toLowerCase() !== 'null')
+                    ? p.breed : (p.species || '—');
+                return `
+                <div class="pet-card" onclick="selectPetById(${p.id_pet})">
+                    <div class="pet-card-emoji">${emoji}</div>
+                    <h3>${p.name}</h3>
+                    <p>${sub}</p>
+                </div>`;
+            }).join('');
+
+        } catch {
+            document.getElementById('pet-cards-grid').innerHTML =
+                '<p style="color:#e74c3c;">שגיאה בטעינת הנתונים</p>';
+        }
+    }
+
+    function selectPetById(id) {
+        const pet = _pets.find(p => p.id_pet == id);
+        if (pet) selectPet(pet);
+    }
+
+    async function selectPet(pet) {
+        await fetch('api/select_pet.php', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ pet_id: pet.id_pet }),
+        });
+        await _showDashboard(pet);
+    }
+
+    async function _showDashboard(pet) {
+        document.getElementById('greeting-name').textContent =
+            pet.name + ' מחכה לך! ' + (SPECIES_EMOJI[pet.species] || '🐾');
+
+        // Sync sidebar pet name + weight with the active pet
+        if (window.updateSidebarPet) window.updateSidebarPet(pet);
+
+        document.getElementById('pet-select-screen').style.display = 'none';
+        const dash = document.getElementById('dashboard');
+        dash.style.visibility    = 'visible';
+        dash.style.pointerEvents = 'auto';
+
+        renderPetProfile(pet);
+        loadDashboard();
+        startLocationPolling();
+    }
+
+    function haversineDist(lat1, lon1, lat2, lon2) {
+        const R = 6371000;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) ** 2 +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    async function loadDashboard() {
+        try {
+            const [locRes, alertRes, zoneRes] = await Promise.all([
+                fetch('api/location.php'),
+                fetch('api/alerts.php'),
+                fetch('api/safetyzone.php'),
+            ]);
+
+            if (locRes.ok && zoneRes.ok) {
+                const loc  = await locRes.json();
+                const zone = await zoneRes.json();
+
+                // Calcul dynamique : on ne fait pas confiance à is_outside stocké en DB
+                const dist      = haversineDist(+loc.latitude, +loc.longitude, +zone.center_lat, +zone.center_lng);
+                const isOutside = dist > +zone.radius_meters;
+
+                document.getElementById('stat-zone').textContent = isOutside ? 'חריגה!' : 'תקין';
+                document.getElementById('stat-zone').style.color = isOutside ? '#e74c3c' : '#2a9d8f';
+                document.getElementById('stat-gps').textContent  = 'מחובר';
+                document.getElementById('stat-gps').style.color  = '#2a9d8f';
+                document.getElementById('stat-health').textContent = loc.is_moving ? 'תקין - בתנועה' : 'תקין';
+
+                initHomeMap(+loc.latitude, +loc.longitude);
+            }
+
+            if (alertRes.ok) {
+                _alerts = await alertRes.json();
+                renderAlerts();
+            }
+        } catch { /* offline */ }
+    }
+
+    function startLocationPolling() {
+        if (_locationInterval) clearInterval(_locationInterval);
+        _locationInterval = setInterval(async () => {
+            try {
+                const res = await fetch('api/location.php');
+                if (!res.ok) return;
+                const loc = await res.json();
+                const lat = +loc.latitude, lng = +loc.longitude;
+                if (_homeMap && _homeMarker) {
+                    _homeMarker.setLatLng([lat, lng]);
+                    _homeMap.setView([lat, lng], 15, { animate: true });
+                }
+                document.getElementById('stat-gps').textContent = 'מחובר';
+                document.getElementById('stat-gps').style.color = '#2a9d8f';
+                document.getElementById('stat-health').textContent = loc.is_moving ? 'תקין - בתנועה' : 'תקין';
+            } catch { /* offline */ }
+        }, 15000);
+    }
+
+    function setFilter(f) {
+        _filter = f;
+        document.getElementById('filter-all').classList.toggle('active', f === 'all');
+        document.getElementById('filter-unread').classList.toggle('active', f === 'unread');
+        renderAlerts();
+    }
+
+    function renderAlerts() {
+        const unreadCount = _alerts.filter(a => !a.is_read).length;
+        const countEl = document.getElementById('unread-count');
+        if (unreadCount > 0) {
+            countEl.textContent = unreadCount;
+            countEl.style.display = 'inline-block';
+        } else {
+            countEl.style.display = 'none';
+        }
+
+        const list = _filter === 'unread'
+            ? _alerts.filter(a => !a.is_read)
+            : _alerts;
+
+        const tbody = document.getElementById('alerts-tbody');
+
+        if (!list.length) {
+            const msg = _filter === 'unread' ? 'אין התראות שלא נקראו' : 'אין התראות';
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#888;">${msg}</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = list.slice(0, 10).map(a => {
+            const date   = new Date(a.created_at).toLocaleString('he-IL');
+            const type   = ALERT_TYPE_MAP[a.alert_type] || { icon: 'fas fa-bell', label: a.alert_type || '—', bg: '#f5f5f5', color: '#555' };
+            const typeTag = `<span class="alert-type-tag" style="background:${type.bg};color:${type.color};">
+                                <i class="${type.icon}"></i>${type.label}
+                             </span>`;
+            const statusCell = a.is_read
+                ? '<span class="badge">נקרא</span>'
+                : `<button class="mark-read-btn" onclick="markAsRead(${a.id_alert}, this)">סמן כנקרא</button>`;
+            const rowClass = a.is_read ? '' : 'row-unread';
+            return `<tr class="${rowClass}"><td>${date}</td><td>${typeTag}</td><td>${a.message}</td><td>${statusCell}</td></tr>`;
+        }).join('');
+    }
+
+    async function markAsRead(id, btn) {
+        btn.disabled = true;
+        btn.textContent = '...';
+        try {
+            await fetch('api/alerts.php', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ id_alert: id }),
+            });
+            _alerts = _alerts.filter(x => x.id_alert != id);
+            renderAlerts();
+        } catch {
+            btn.disabled = false;
+            btn.textContent = 'סמן כנקרא';
+        }
+    }
+
+    initPetSelection();
+    </script>
+</body>
+</html>

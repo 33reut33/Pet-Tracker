@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pet Tracker — רפואי</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+    <div id="sidebar-root"></div>
+
+    <main class="content-area">
+
+        <!-- ── Formulaire ── -->
+        <div class="glass-card">
+            <h2 class="page-heading"><i class="fas fa-notes-medical"></i> הוסף רשומה רפואית</h2>
+
+            <div class="med-type-tabs">
+                <button class="med-type-btn active" data-type="visit"      onclick="setType('visit')">
+                    <i class="fas fa-stethoscope"></i> ביקור וטרינר
+                </button>
+                <button class="med-type-btn" data-type="medication" onclick="setType('medication')">
+                    <i class="fas fa-pills"></i> תרופה / טיפול
+                </button>
+                <button class="med-type-btn" data-type="weight"     onclick="setType('weight')">
+                    <i class="fas fa-weight"></i> שקילה
+                </button>
+                <button class="med-type-btn" data-type="other"      onclick="setType('other')">
+                    <i class="fas fa-notes-medical"></i> אחר
+                </button>
+            </div>
+
+            <div class="med-form-row">
+                <div class="form-group form-group--wide" id="fg-title">
+                    <label><i class="fas fa-tag"></i> כותרת</label>
+                    <input type="text" id="med-title" placeholder="בדיקה שגרתית, ניתוח, חיסון...">
+                </div>
+                <div class="form-group" id="fg-weight" style="display:none;">
+                    <label><i class="fas fa-weight"></i> משקל (ק"ג)</label>
+                    <input type="number" id="med-weight-kg" placeholder="4.2" step="0.1" min="0.1">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-calendar-check"></i> תאריך</label>
+                    <input type="date" id="med-date">
+                </div>
+                <div class="form-group" id="fg-end" style="display:none;">
+                    <label><i class="fas fa-calendar-times"></i> תאריך סיום</label>
+                    <input type="date" id="med-end-date">
+                </div>
+                <div class="form-group" id="fg-vet">
+                    <label><i class="fas fa-user-md"></i> שם הוטרינר</label>
+                    <input type="text" id="med-vet" placeholder='ד"ר...'>
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom:14px;">
+                <label><i class="fas fa-sticky-note"></i> הערות <small style="font-weight:400;color:#aaa;">(אופציונלי)</small></label>
+                <input type="text" id="med-notes" placeholder="הערות נוספות...">
+            </div>
+            <button class="action-btn med-add-btn" onclick="addRecord()">
+                <i class="fas fa-plus-circle"></i> הוסף רשומה
+            </button>
+        </div>
+
+        <!-- ── Active + Weight grid ── -->
+        <div class="med-main-grid">
+
+            <div class="glass-card">
+                <h2 class="page-heading" style="color:#e76f51;">
+                    <i class="fas fa-pills"></i> טיפולים פעילים
+                </h2>
+                <div id="med-active">
+                    <p class="med-empty">טוען...</p>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <h2 class="page-heading" style="color:#6c63ff;">
+                    <i class="fas fa-weight"></i> מעקב משקל
+                </h2>
+                <div id="weight-latest"></div>
+                <div id="weight-chart-wrap" style="display:none; position:relative; height:150px; margin-top:14px;">
+                    <canvas id="weight-chart"></canvas>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ── Visits ── -->
+        <div class="glass-card" style="margin-top:20px;">
+            <h2 class="page-heading" style="color:#2a9d8f;">
+                <i class="fas fa-stethoscope"></i> ביקורים אצל הוטרינר
+            </h2>
+            <div id="med-visits">
+                <p class="med-empty">טוען...</p>
+            </div>
+        </div>
+
+        <!-- ── Historique ── -->
+        <div class="glass-card" style="margin-top:32px;">
+            <h2 class="page-heading"><i class="fas fa-history"></i> היסטוריה רפואית מלאה</h2>
+
+            <div class="hist-filter-tabs">
+                <button class="hist-filter-btn active" data-filter="all"        onclick="renderHistory('all')">הכל</button>
+                <button class="hist-filter-btn"        data-filter="visit"      onclick="renderHistory('visit')">ביקורים</button>
+                <button class="hist-filter-btn"        data-filter="medication" onclick="renderHistory('medication')">תרופות</button>
+                <button class="hist-filter-btn"        data-filter="weight"     onclick="renderHistory('weight')">משקל</button>
+                <button class="hist-filter-btn"        data-filter="other"      onclick="renderHistory('other')">אחר</button>
+            </div>
+
+            <div style="overflow-x:auto; margin-top:14px;">
+                <table class="med-history-table">
+                    <thead>
+                        <tr>
+                            <th>סוג</th>
+                            <th>כותרת / פרטים</th>
+                            <th>תאריך התחלה</th>
+                            <th>תאריך סיום</th>
+                            <th>וטרינר / משקל</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="med-history-tbody">
+                        <tr><td colspan="6" style="text-align:center;color:#aaa;padding:20px;">טוען...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <style>
+        /* ── Type tabs ─────────────────────────────────────────────── */
+        .med-type-tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .med-type-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 8px 18px;
+            border-radius: 20px;
+            border: 1.5px solid rgba(0,0,0,0.1);
+            background: white;
+            color: #888;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .med-type-btn:hover { border-color: #2a9d8f; color: #2a9d8f; }
+        .med-type-btn[data-type="visit"].active      { background:rgba(42,157,143,0.12);  border-color:#2a9d8f;  color:#2a9d8f;  }
+        .med-type-btn[data-type="medication"].active { background:rgba(231,111,81,0.12);  border-color:#e76f51;  color:#e76f51;  }
+        .med-type-btn[data-type="weight"].active     { background:rgba(108,99,255,0.12);  border-color:#6c63ff;  color:#6c63ff;  }
+        .med-type-btn[data-type="other"].active      { background:rgba(69,123,157,0.12);  border-color:#457b9d;  color:#457b9d;  }
+
+        /* ── Form ─────────────────────────────────────────────────── */
+        .med-form-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 12px;
+            align-items: flex-end;
+        }
+        .med-form-row .form-group       { flex: 1; min-width: 130px; margin-bottom: 0; }
+        .med-form-row .form-group--wide { flex: 2; min-width: 200px; }
+        .med-add-btn {
+            width: 100%;
+            justify-content: center;
+            padding: 13px;
+            font-size: 1rem;
+            border-radius: 12px;
+        }
+
+        /* ── Main grid ────────────────────────────────────────────── */
+        .med-main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .med-main-grid > .glass-card { margin-bottom: 0; }
+
+        /* ── Treatment cards ──────────────────────────────────────── */
+        .med-card {
+            background: white;
+            border-radius: 12px;
+            padding: 12px 14px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(0,0,0,0.07);
+            transition: box-shadow 0.2s;
+        }
+        .med-card:last-child { margin-bottom: 0; }
+        .med-card:hover { box-shadow: 0 3px 12px rgba(0,0,0,0.08); }
+        .med-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .med-card-info { flex: 1; min-width: 0; }
+        .med-card-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 6px;
+        }
+        .med-card-title strong { font-size: 0.93rem; color: #264653; }
+        .med-card-info small   { color: #888; font-size: 0.76rem; line-height: 1.6; }
+        .med-remain {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            margin-top: 7px;
+        }
+
+        /* ── Type badge ───────────────────────────────────────────── */
+        .med-type-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            border: 1px solid;
+            font-size: 0.75rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        /* ── Delete ───────────────────────────────────────────────── */
+        .med-delete {
+            background: none;
+            border: none;
+            color: #e74c3c;
+            cursor: pointer;
+            padding: 5px 8px;
+            border-radius: 7px;
+            font-size: 0.88rem;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+        .med-delete:hover { background: #fdecea; }
+
+        /* ── Empty ────────────────────────────────────────────────── */
+        .med-empty {
+            color: #ccc;
+            font-size: 0.82rem;
+            text-align: center;
+            padding: 28px 0;
+        }
+
+        /* ── Weight display ───────────────────────────────────────── */
+        .weight-big {
+            font-size: 2.8rem;
+            font-weight: 700;
+            color: #6c63ff;
+            text-align: center;
+            line-height: 1.1;
+            margin-top: 10px;
+        }
+        .weight-big span { font-size: 1.2rem; font-weight: 400; color: #aaa; }
+        .weight-date  { text-align: center; font-size: 0.8rem; color: #bbb; margin-top: 4px; }
+        .weight-trend { text-align: center; font-size: 0.82rem; font-weight: 700; margin-top: 5px; }
+
+        /* ── History filter tabs ──────────────────────────────────── */
+        .hist-filter-tabs {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .hist-filter-btn {
+            padding: 5px 15px;
+            border-radius: 16px;
+            border: 1.5px solid rgba(0,0,0,0.1);
+            background: white;
+            color: #777;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .hist-filter-btn:hover  { border-color: #2a9d8f; color: #2a9d8f; }
+        .hist-filter-btn.active { background: rgba(42,157,143,0.1); border-color: #2a9d8f; color: #2a9d8f; }
+
+        /* ── History table ────────────────────────────────────────── */
+        .med-history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88rem;
+        }
+        .med-history-table th {
+            background: rgba(42,157,143,0.08);
+            padding: 10px 14px;
+            text-align: right;
+            font-weight: 600;
+            color: #264653;
+            border-bottom: 2px solid rgba(42,157,143,0.15);
+            white-space: nowrap;
+        }
+        .med-history-table td {
+            padding: 9px 14px;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            color: #555;
+            vertical-align: middle;
+        }
+        .med-history-table tr:last-child td { border-bottom: none; }
+        .med-history-table tr:hover td { background: rgba(42,157,143,0.03); }
+
+        /* ── Card actions ────────────────────────────────────────── */
+        .med-card-actions { margin-top: 10px; }
+
+        /* ── Visit reminder ───────────────────────────────────────── */
+        .visit-reminder-row {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .btn-visit-reminder {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 13px;
+            border-radius: 8px;
+            border: 1.5px solid rgba(244,162,97,0.5);
+            background: rgba(244,162,97,0.1);
+            color: #c97a2e;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .btn-visit-reminder:hover { background: rgba(244,162,97,0.2); }
+        .btn-visit-reminder--active {
+            background: rgba(42,157,143,0.12);
+            border-color: rgba(42,157,143,0.4);
+            color: #2a9d8f;
+        }
+        .btn-visit-reminder--active:hover { background: rgba(42,157,143,0.2); }
+        .visit-reminder-select {
+            padding: 5px 10px;
+            border: 1.5px solid rgba(0,0,0,0.12);
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-family: inherit;
+            color: #555;
+            background: white;
+            cursor: pointer;
+        }
+
+        /* ── Responsive ───────────────────────────────────────────── */
+        @media (max-width: 1023px) {
+            .med-main-grid { grid-template-columns: 1fr; gap: 0; }
+            .med-main-grid > .glass-card { margin-bottom: 20px; }
+        }
+        @media (max-width: 768px) {
+            .med-type-btn { padding: 7px 13px; font-size: 0.8rem; }
+        }
+        @media (max-width: 480px) {
+            .med-form-row { flex-direction: column; }
+            .med-form-row .form-group--wide { flex: none; }
+            .med-history-table th:nth-child(4),
+            .med-history-table td:nth-child(4) { display: none; }
+            .med-history-table th:nth-child(5),
+            .med-history-table td:nth-child(5) { display: none; }
+        }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/medical.js"></script>
+</body>
+</html>

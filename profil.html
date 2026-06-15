@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pet Tracker — הפרופיל שלי</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+    <div id="sidebar-root"></div>
+
+    <main class="content-area">
+
+        <!-- ── Grid principal ── -->
+        <div class="profil-grid">
+
+            <!-- ══ Colonne gauche : la bête ══ -->
+            <div style="display:flex; flex-direction:column; gap:20px;">
+
+                <!-- Photo + infos rapides -->
+                <div class="glass-card">
+                    <h2 class="page-heading"><i class="fas fa-paw"></i> פרטי החיה</h2>
+
+                    <div class="pet-hero">
+                        <div class="avatar-zone" onclick="document.getElementById('photo-input').click()" title="שנה תמונה">
+                            <span class="avatar-emoji" id="p-emoji">🐾</span>
+                            <img  id="p-photo" src="" alt="" style="display:none;">
+                            <div class="avatar-overlay"><i class="fas fa-camera"></i></div>
+                            <button id="p-remove-btn"
+                                onclick="removePetPhoto(); event.stopPropagation();"
+                                title="הסר תמונה"
+                                style="display:none;">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <input type="file" id="photo-input" accept="image/*" style="display:none;" onchange="uploadPhoto(this)">
+
+                        <div class="pet-hero-info">
+                            <h3 id="p-name-display">טוען...</h3>
+                            <p id="p-species-display" class="pet-species-label"></p>
+                            <div class="pet-quick-stats">
+                                <span id="p-age-display">—</span>
+                                <span id="p-weight-display">—</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Formulaire pet -->
+                    <div class="profil-form-grid">
+                        <div class="form-group">
+                            <label><i class="fas fa-tag"></i> שם</label>
+                            <input type="text" id="p-name">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-paw"></i> סוג</label>
+                            <select id="p-species">
+                                <option value="dog">כלב 🐶</option>
+                                <option value="cat">חתול 🐱</option>
+                                <option value="rabbit">ארנב 🐰</option>
+                                <option value="other">אחר 🐾</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-dna"></i> גזע</label>
+                            <input type="text" id="p-breed" placeholder="לא חובה">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-birthday-cake"></i> תאריך לידה</label>
+                            <input type="date" id="p-birth-date">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-weight"></i> משקל (ק"ג)</label>
+                            <input type="number" id="p-weight" step="0.1" min="0" placeholder="—">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-stethoscope"></i> וטרינר</label>
+                            <input type="text" id="p-vet" placeholder="שם הוטרינר">
+                        </div>
+                        <div class="form-group" style="grid-column: 1 / -1;">
+                            <label><i class="fas fa-microchip"></i> מזהה קולר</label>
+                            <input type="text" id="p-collar" placeholder="מספר סידורי">
+                        </div>
+                    </div>
+                    <button class="action-btn profil-save-btn" id="pet-save-btn" onclick="savePet()">
+                        <i class="fas fa-check"></i> שמור שינויים
+                    </button>
+                    <div id="pet-save-msg" class="save-msg"></div>
+                </div>
+
+                <!-- Liste des animaux -->
+                <div class="glass-card">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                        <h2 class="page-heading" style="margin:0;"><i class="fas fa-list"></i> החיות שלי</h2>
+                        <button class="btn-add-pet" onclick="toggleAddPet()">
+                            <i class="fas fa-plus"></i> הוסף חיה
+                        </button>
+                    </div>
+
+                    <!-- Formulaire nouvelle bête (caché par défaut) -->
+                    <div id="add-pet-form" style="display:none; margin-bottom:16px; padding:14px; background:rgba(42,157,143,0.06); border-radius:12px; border:1.5px solid rgba(42,157,143,0.2);">
+                        <div class="profil-form-grid">
+                            <div class="form-group">
+                                <label>שם *</label>
+                                <input type="text" id="new-pet-name" placeholder="שם החיה">
+                            </div>
+                            <div class="form-group">
+                                <label>סוג</label>
+                                <select id="new-pet-species">
+                                    <option value="dog">כלב 🐶</option>
+                                    <option value="cat">חתול 🐱</option>
+                                    <option value="rabbit">ארנב 🐰</option>
+                                    <option value="other">אחר 🐾</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>גזע</label>
+                                <input type="text" id="new-pet-breed" placeholder="לא חובה">
+                            </div>
+                            <div class="form-group">
+                                <label>תאריך לידה</label>
+                                <input type="date" id="new-pet-birth">
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:8px; margin-top:4px;">
+                            <button class="action-btn" style="padding:8px 18px; font-size:0.88rem;" onclick="addNewPet()">
+                                <i class="fas fa-plus-circle"></i> הוסף
+                            </button>
+                            <button onclick="toggleAddPet()" style="padding:8px 14px; border-radius:10px; border:1.5px solid #ddd; background:white; cursor:pointer; font-family:inherit; color:#888;">
+                                ביטול
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="pets-list">
+                        <p class="profil-empty">טוען...</p>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ══ Colonne droite : compte ══ -->
+            <div style="display:flex; flex-direction:column; gap:20px;">
+
+                <!-- Infos compte -->
+                <div class="glass-card">
+                    <h2 class="page-heading"><i class="fas fa-user-circle"></i> פרטי החשבון</h2>
+                    <div class="profil-form-grid">
+                        <div class="form-group">
+                            <label><i class="fas fa-user"></i> שם פרטי</label>
+                            <input type="text" id="o-first-name">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-user"></i> שם משפחה</label>
+                            <input type="text" id="o-last-name">
+                        </div>
+                        <div class="form-group" style="grid-column: 1 / -1;">
+                            <label><i class="fas fa-phone"></i> טלפון</label>
+                            <input type="tel" id="o-phone" placeholder="לא חובה">
+                        </div>
+                        <div class="form-group" style="grid-column: 1 / -1;">
+                            <label><i class="fas fa-envelope"></i> אימייל <small style="color:#aaa; font-weight:400;">(לא ניתן לשינוי)</small></label>
+                            <input type="email" id="o-email" disabled style="opacity:0.6; cursor:not-allowed;">
+                        </div>
+                    </div>
+                    <button class="action-btn profil-save-btn" id="owner-save-btn" onclick="saveOwner()">
+                        <i class="fas fa-check"></i> שמור שינויים
+                    </button>
+                    <div id="owner-save-msg" class="save-msg"></div>
+                </div>
+
+                <!-- Changement de mot de passe -->
+                <div class="glass-card">
+                    <button class="pw-toggle" onclick="togglePwSection()">
+                        <span><i class="fas fa-lock"></i> שינוי סיסמה</span>
+                        <i class="fas fa-chevron-down" id="pw-chevron"></i>
+                    </button>
+
+                    <div id="pw-section" style="display:none; margin-top:16px;">
+                        <div class="form-group">
+                            <label><i class="fas fa-key"></i> סיסמה נוכחית</label>
+                            <div class="pw-input-wrap">
+                                <input type="password" id="pw-old" autocomplete="current-password">
+                                <button class="pw-eye" onclick="togglePwVis('pw-old', this)"><i class="fas fa-eye"></i></button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-lock"></i> סיסמה חדשה</label>
+                            <div class="pw-input-wrap">
+                                <input type="password" id="pw-new" autocomplete="new-password">
+                                <button class="pw-eye" onclick="togglePwVis('pw-new', this)"><i class="fas fa-eye"></i></button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-lock"></i> אימות סיסמה חדשה</label>
+                            <div class="pw-input-wrap">
+                                <input type="password" id="pw-confirm" autocomplete="new-password">
+                                <button class="pw-eye" onclick="togglePwVis('pw-confirm', this)"><i class="fas fa-eye"></i></button>
+                            </div>
+                        </div>
+                        <div id="pw-strength-bar" style="margin-bottom:12px; display:none;">
+                            <div style="height:4px; background:#eee; border-radius:4px; overflow:hidden;">
+                                <div id="pw-strength-fill" style="height:100%; width:0%; transition:width 0.3s, background 0.3s; border-radius:4px;"></div>
+                            </div>
+                            <small id="pw-strength-label" style="color:#aaa; font-size:0.75rem;"></small>
+                        </div>
+                        <button class="action-btn profil-save-btn" id="pw-save-btn" onclick="changePassword()">
+                            <i class="fas fa-save"></i> עדכן סיסמה
+                        </button>
+                        <div id="pw-save-msg" class="save-msg"></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <style>
+        /* ── Layout ────────────────────────────────────────────────── */
+        .profil-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            align-items: start;
+        }
+
+        /* ── Pet hero ──────────────────────────────────────────────── */
+        .pet-hero {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 22px;
+        }
+        .avatar-zone {
+            flex-shrink: 0;
+            width: 96px; height: 96px;
+            border-radius: 20px;
+            overflow: visible;
+            background: rgba(42,157,143,0.08);
+            border: 2px solid rgba(42,157,143,0.2);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            position: relative;
+            transition: border-color 0.2s;
+        }
+        .avatar-zone:hover { border-color: #2a9d8f; }
+        .avatar-zone:hover .avatar-overlay { opacity: 1; }
+        .avatar-emoji { font-size: 3.4rem; line-height: 1; }
+        .avatar-zone img { width: 100%; height: 100%; object-fit: cover; border-radius: 18px; }
+        .avatar-overlay {
+            position: absolute; inset: 0;
+            background: rgba(0,0,0,0.4);
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; transition: opacity 0.2s;
+            border-radius: 18px;
+            color: white; font-size: 1.3rem;
+        }
+        #p-remove-btn {
+            position: absolute; top: -8px; right: -8px;
+            width: 24px; height: 24px;
+            border-radius: 50%; border: 2px solid white;
+            background: #e74c3c; color: white;
+            font-size: 0.7rem; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            padding: 0;
+        }
+        .pet-hero-info h3  { margin: 0 0 4px; font-size: 1.3rem; color: #264653; }
+        .pet-species-label { margin: 0 0 8px; color: #2a9d8f; font-weight: 600; font-size: 0.9rem; }
+        .pet-quick-stats   { display: flex; gap: 12px; flex-wrap: wrap; }
+        .pet-quick-stats span {
+            background: rgba(42,157,143,0.08);
+            border-radius: 8px;
+            padding: 4px 10px;
+            font-size: 0.82rem;
+            color: #555;
+            font-weight: 600;
+        }
+
+        /* ── Forms ─────────────────────────────────────────────────── */
+        .profil-form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .profil-save-btn {
+            width: 100%;
+            justify-content: center;
+            padding: 12px;
+            font-size: 0.95rem;
+            border-radius: 12px;
+        }
+        .save-msg {
+            margin-top: 8px;
+            font-size: 0.83rem;
+            min-height: 18px;
+            text-align: center;
+        }
+        .save-msg.ok    { color: #2a9d8f; }
+        .save-msg.error { color: #e74c3c; }
+
+        /* ── Pets list ─────────────────────────────────────────────── */
+        .pet-list-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: white;
+            border: 1.5px solid rgba(0,0,0,0.07);
+            margin-bottom: 8px;
+            transition: box-shadow 0.2s;
+        }
+        .pet-list-item:last-child { margin-bottom: 0; }
+        .pet-list-item:hover { box-shadow: 0 3px 10px rgba(0,0,0,0.07); }
+        .pet-list-item.active-pet {
+            border-color: rgba(42,157,143,0.4);
+            background: rgba(42,157,143,0.05);
+        }
+        .pet-list-emoji { font-size: 1.8rem; flex-shrink: 0; }
+        .pet-list-info { flex: 1; min-width: 0; }
+        .pet-list-info strong { display: block; font-size: 0.93rem; color: #264653; }
+        .pet-list-info small  { color: #888; font-size: 0.78rem; }
+        .pet-list-active-badge {
+            font-size: 0.73rem;
+            background: rgba(42,157,143,0.12);
+            color: #2a9d8f;
+            border: 1px solid rgba(42,157,143,0.3);
+            border-radius: 10px;
+            padding: 2px 9px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .btn-switch-pet {
+            padding: 5px 12px;
+            border-radius: 8px;
+            border: 1.5px solid rgba(42,157,143,0.4);
+            background: rgba(42,157,143,0.08);
+            color: #2a9d8f;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+        .btn-switch-pet:hover { background: rgba(42,157,143,0.18); }
+        .btn-add-pet {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 7px 14px;
+            border-radius: 10px;
+            border: 1.5px solid rgba(42,157,143,0.4);
+            background: rgba(42,157,143,0.08);
+            color: #2a9d8f;
+            font-size: 0.85rem; font-weight: 600;
+            cursor: pointer; font-family: inherit;
+            transition: background 0.2s;
+        }
+        .btn-add-pet:hover { background: rgba(42,157,143,0.18); }
+        .profil-empty { color: #ccc; font-size: 0.85rem; text-align: center; padding: 20px 0; }
+
+        /* ── Password section ──────────────────────────────────────── */
+        .pw-toggle {
+            width: 100%;
+            display: flex; justify-content: space-between; align-items: center;
+            background: none; border: none;
+            font-size: 1rem; font-weight: 700; color: #264653;
+            cursor: pointer; font-family: inherit; padding: 0;
+        }
+        .pw-toggle span { display: flex; align-items: center; gap: 8px; color: #264653; }
+        .pw-toggle i.fa-lock { color: #2a9d8f; }
+        .pw-input-wrap { position: relative; }
+        .pw-input-wrap input { padding-left: 38px !important; }
+        .pw-eye {
+            position: absolute; top: 50%; left: 10px; transform: translateY(-50%);
+            background: none; border: none; color: #aaa; cursor: pointer;
+            padding: 4px; font-size: 0.9rem;
+        }
+        .pw-eye:hover { color: #555; }
+
+        /* ── Responsive ────────────────────────────────────────────── */
+        @media (max-width: 1023px) {
+            .profil-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 480px) {
+            .profil-form-grid { grid-template-columns: 1fr; }
+            .pet-hero { flex-direction: column; text-align: center; }
+            .pet-quick-stats { justify-content: center; }
+        }
+    </style>
+
+    <script src="js/auth.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/profil.js"></script>
+</body>
+</html>
