@@ -1,0 +1,154 @@
+/* ===== Profile Hero ===== */
+.profile-hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+}
+
+.profile-avatar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.profile-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2a9d8f, #264653);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: white;
+    flex-shrink: 0;
+    box-shadow: 0 4px 15px rgba(42, 157, 143, 0.4);
+}
+
+.profile-hero-info h2 {
+    margin: 0 0 4px;
+    font-size: 1.4rem;
+    color: #264653;
+}
+
+.ph-email {
+    display: block;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.ph-since {
+    display: block;
+    color: #999;
+    font-size: 0.82rem;
+    margin-top: 2px;
+}
+
+.logout-btn {
+    background: linear-gradient(135deg, #e74c3c, #c0392b) !important;
+    flex-shrink: 0;
+}
+
+/* ===== Profile Grid ===== */
+.profile-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+@media (max-width: 768px) {
+    .profile-grid { grid-template-columns: 1fr; }
+
+    .profile-hero {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
+    }
+
+    .logout-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .profile-hero {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
+    }
+
+    .profile-avatar {
+        width: 58px;
+        height: 58px;
+        font-size: 1.6rem;
+    }
+
+    .profile-hero-info h2 {
+        font-size: 1.15rem;
+    }
+
+    .logout-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .section-title {
+        font-size: 0.95rem;
+    }
+
+    .info-row {
+        font-size: 0.88rem;
+    }
+}
+
+/* ===== Section title ===== */
+.section-title {
+    font-size: 1.05rem;
+    color: #264653;
+    margin: 0 0 18px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid rgba(42, 157, 143, 0.15);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-title i {
+    color: #2a9d8f;
+}
+
+/* ===== Info rows (zone / location) ===== */
+.info-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    font-size: 0.95rem;
+    color: #444;
+}
+
+.info-row i {
+    color: #2a9d8f;
+    width: 18px;
+    text-align: center;
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+/* ===== Save message ===== */
+.save-msg {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: rgba(42, 157, 143, 0.08);
+}
